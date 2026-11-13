@@ -9,7 +9,10 @@ const ConfigSchema = z.object({
   // Upstream
   ZENAPPLY_API_BASE: z.string().url().default('https://api.zenapply.app'),
   ZENAPPLY_SERVICE_EMAIL: z.string().email().default('service@zenapply.app'),
-  ZENAPPLY_SERVICE_PASSWORD: z.string().min(1).default('dummy-password-for-local-slice'),
+  ZENAPPLY_SERVICE_PASSWORD: z
+    .string()
+    .default('dummy-password-for-local-slice')
+    .transform((val) => val.replace(/^["'](.*)["']$/, '$1')), // strip surrounding quotes if present in env file
 
   // Secrets
   CURSOR_HMAC_SECRET: z.string().min(16).default('development-secret-cursor-hmac-min16chars'),
