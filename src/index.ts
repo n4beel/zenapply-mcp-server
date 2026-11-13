@@ -1,6 +1,11 @@
 import express, { Request, Response } from 'express';
 import crypto from 'node:crypto';
-import { mcpAuthRouter, getOAuthProtectedResourceMetadataUrl } from '@modelcontextprotocol/sdk/server/auth/router.js';
+import {
+  mcpAuthRouter,
+  mcpAuthMetadataRouter,
+  createOAuthMetadata,
+  getOAuthProtectedResourceMetadataUrl,
+} from '@modelcontextprotocol/sdk/server/auth/router.js';
 import { requireBearerAuth } from '@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { loadConfig } from './config.js';
@@ -56,11 +61,21 @@ export function createApp() {
   const issuerUrl = new URL(config.PUBLIC_BASE_URL);
   const mcpUrl = new URL('/mcp', config.PUBLIC_BASE_URL);
 
+  const oauthRouterOptions = {
+    provider: oauthProvider,
+    issuerUrl,
+    baseUrl: issuerUrl,
+    resourceServerUrl: mcpUrl,
+    scopesSupported: ['read'],
+  };
+
+  app.use(mcpAuthRouter(oauthRouterOptions));
+
+  // Also support root /.well-known/oauth-protected-resource per RFC 9728
   app.use(
-    mcpAuthRouter({
-      provider: oauthProvider,
-      issuerUrl,
-      baseUrl: issuerUrl,
+    mcpAuthMetadataRouter({
+      oauthMetadata: createOAuthMetadata(oauthRouterOptions),
+      resourceServerUrl: issuerUrl,
       scopesSupported: ['read'],
     }),
   );
