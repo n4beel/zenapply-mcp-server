@@ -1,0 +1,112 @@
+{
+  "jobs": [
+    {
+      "job_title": "Développeur Java/Angular",
+      "company": "alten",
+      "group_size": 1,
+      "location": "Île-de-France, France",
+      "url": "https://fr.linkedin.com/jobs/view/d%C3%A9veloppeur-java-angular-at-alten-4490714924",
+      "external_apply_url": "https://www.linkedin.com/jobs/view/4490714924",
+      "source_type": "direct",
+      "source": "linkedin",
+      "sources": [
+        "linkedin"
+      ],
+      "posted_date": "2026-11-13T13:07:31.989Z",
+      "posted_date_precision": "exact",
+      "unique_hash": "d4fbe1a199a172c8e1c8590f61123b056672de7bca9aab7d2686cea9b4a14016",
+      "companySize": null,
+      "id": "1d16fc6e-734f-41b9-923b-e8aa3c329d9b",
+      "created_at": "2026-11-13T13:09:31.999Z",
+      "employment_type": "Full-time",
+      "seniority_level": "Mid-Senior level",
+      "locations": [
+        "Île-de-France, France"
+      ],
+      "locations_truncated": false
+    },
+    {
+      "job_title": "Senior Java Automation Tester (f/m/d)",
+      "company": "hcltech germany",
+      "group_size": 1,
+      "location": "Berlin, Germany",
+      "url": "https://de.linkedin.com/jobs/view/senior-java-automation-tester-f-m-d-at-hcltech-germany-4489567716",
+      "external_apply_url": "https://www.linkedin.com/jobs/view/4489567716",
+      "source_type": "direct",
+      "source": "linkedin",
+      "sources": [
+        "linkedin"
+      ],
+      "posted_date": "2026-11-13T13:02:31.881Z",
+      "posted_date_precision": "exact",
+      "unique_hash": "5c4b53ad839e31d5122a13385b9d06bc13dfb525ac1cfbedebf26717a81def11",
+      "companySize": null,
+      "id": "1069db3e-f167-4e27-99ab-1b8bf75f09e2",
+      "created_at": "2026-11-13T13:07:31.910Z",
+      "employment_type": "Full-time",
+      "seniority_level": "Mid-Senior level",
+      "locations": [
+        "Berlin, Germany"
+      ],
+      "locations_truncated": false
+    },
+    {
+      "job_title": "Full-Stack Engineer (Frontend Leaning) - ElevenAI",
+      "company": "elevenlabs",
+      "group_size": 5,
+      "location": "Denmark",
+      "url": "https://dk.linkedin.com/jobs/view/full-stack-engineer-frontend-leaning-elevenai-at-elevenlabs-4490712860",
+      "external_apply_url": "https://www.linkedin.com/jobs/view/4490712860",
+      "source_type": "direct",
+      "source": "linkedin",
+      "sources": [
+        "linkedin"
+      ],
+      "posted_date": "2026-11-13T12:59:01.675Z",
+      "posted_date_precision": "exact",
+      "unique_hash": "b362885d0708c0edfab03023c66fd7642c8803bf6c0831b5cda2cc581b1b76ec",
+      "resolved_work_model": "remote",
+      "companySize": null,
+      "id": "23929df6-e9dc-4f1a-90de-27ab461c2f6e",
+      "created_at": "2026-11-13T13:07:01.692Z",
+      "employment_type": "Full-time",
+      "seniority_level": "Not Applicable",
+      "locations": [
+        "Denmark",
+        "Dublin, County Dublin, Ireland",
+        "Hungary",
+        "Poland",
+        "United Kingdom"
+      ],
+      "locations_truncated": false
+    }
+  ],
+  "total": 1132,
+  "page": 1,
+  "limit": 3,
+  "totalPages": 378,
+  "truncated": false,
+  "titleMatch": true,
+  "filters": {
+    "companies": [],
+    "sources": []
+  },
+  "blacklistHidden": 0,
+  "blacklistApprox": false,
+  "nonTechHidden": 0,
+  "juniorHidden": 47,
+  "applied": {
+    "query": "typescript",
+    "locations": [],
+    "sources": [],
+    "workModels": [],
+    "includeUnknownWorkModel": false,
+    "workModelConfirmedOnly": false,
+    "postedFrom": "2026-11-11T13:26:56.866Z",
+    "postedTo": null,
+    "sortBy": "date",
+    "sortOrder": "desc",
+    "grouped": true,
+    "titleMatch": true
+  }
+}
