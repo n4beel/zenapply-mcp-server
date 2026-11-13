@@ -20,6 +20,30 @@ export function createApp() {
   const config = loadConfig();
   const app = express();
 
+  // Trust reverse proxy running on loopback (host nginx)
+  app.set('trust proxy', 'loopback');
+
+  // Request logger middleware
+  app.use((req: Request, res: Response, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+      const auth = (req as any).auth;
+      const credential = auth?.extra?.credentialName || auth?.clientId || '-';
+      logger.info(
+        {
+          method: req.method,
+          path: req.originalUrl || req.url || req.path,
+          status: res.statusCode,
+          credential,
+          durationMs: Date.now() - start,
+          ip: req.ip,
+        },
+        'HTTP request',
+      );
+    });
+    next();
+  });
+
   app.use(express.json({ limit: '64kb' }));
   app.use(express.urlencoded({ extended: true, limit: '64kb' }));
 
