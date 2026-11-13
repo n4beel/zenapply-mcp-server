@@ -14,6 +14,8 @@
   },
   "homepage": "https://github.com/n4beel/zenapply-mcp-server#readme",
   "dependencies": {
+    "@emnapi/core": "^2.0.0-beta.2",
+    "@emnapi/runtime": "^2.0.0-beta.2",
     "@modelcontextprotocol/sdk": "1.32.2",
     "better-sqlite3": "^13.1.1",
     "dotenv": "^18.0.10",

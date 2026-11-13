@@ -108,10 +108,14 @@ jobs:
           fi
 
       - name: Run Live Post-Deploy Smoke Test
+        env:
+          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
         run: |
-          echo "🧪 Running live smoke tests..."
-          npm ci
-          npx tsx test/smoke/run.ts
+          echo "🧪 Running live smoke tests inside container image..."
+          docker run --rm \
+            --env-file /home/nabeel/zenapply-mcp-env/.env \
+            "${{ env.IMAGE_NAME }}:$IMAGE_TAG" \
+            node dist/smoke-run.js
 
       - name: Record Last Good Tag
         if: success()

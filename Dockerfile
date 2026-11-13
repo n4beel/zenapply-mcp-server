@@ -25,11 +25,6 @@ FROM node:22-slim AS runner
 
 WORKDIR /app
 
-# Install curl for docker healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
 ENV NODE_ENV=production
 
 # Create data directory for SQLite volume with ownership for non-root user 'node'
@@ -44,6 +39,6 @@ USER node
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD curl -f http://127.0.0.1:8080/health || exit 1
+  CMD node -e "fetch('http://127.0.0.1:8080/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
 
 CMD ["node", "dist/index.js"]

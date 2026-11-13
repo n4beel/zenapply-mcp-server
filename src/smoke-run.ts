@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { loadConfig } from '../../src/config.js';
-import { ZenApplyClient } from '../../src/upstream/zenapply-client.js';
-import { mapSearchRow, mapFullJob } from '../../src/core/map-row.js';
+import { loadConfig } from './config.js';
+import { ZenApplyClient } from './upstream/zenapply-client.js';
+import { mapSearchRow, mapFullJob } from './core/map-row.js';
 
 const config = loadConfig();
 const client = new ZenApplyClient({
