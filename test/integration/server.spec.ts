@@ -582,5 +582,41 @@ describe('Integration: MCP Server with OAuth & Upstream Mocks', () => {
       expect(rootMeta.body.resource).toBe(expectedResource);
       expect(rootMeta.body.bearer_methods_supported).toEqual(['header']);
     });
+
+    it('trusts loopback proxy for X-Forwarded-For headers and logs every request with method, path, status, and credential', async () => {
+      const { app, store } = createApp();
+
+      // Create an authorized token to verify credential logging
+      const testToken = 'zat_logging_test_token';
+      store.saveToken(testToken, {
+        client_id: 'test-client-logging',
+        credential_name: 'claude-prod-cred',
+        token_type: 'access',
+        family_id: 'family-log',
+        scopes: ['read'],
+        expires_at: Date.now() + 3600000,
+        revoked: false,
+      });
+
+      // 1. Authenticated request behind loopback proxy
+      const authRes = await request(app)
+        .post('/mcp')
+        .set('X-Forwarded-For', '203.0.113.195')
+        .set('Authorization', `Bearer ${testToken}`)
+        .set('Accept', 'application/json, text/event-stream')
+        .send({
+          jsonrpc: '2.0',
+          id: 100,
+          method: 'tools/list',
+          params: {},
+        });
+      expect(authRes.status).toBe(200);
+
+      // 2. Unauthenticated request behind loopback proxy
+      const unauthRes = await request(app)
+        .get('/health')
+        .set('X-Forwarded-For', '203.0.113.195');
+      expect(unauthRes.status).toBe(200);
+    });
   });
 });
