@@ -11,6 +11,10 @@ import {
   OAuthTokens,
 } from '@modelcontextprotocol/sdk/shared/auth.js';
 import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
+import {
+  InvalidGrantError,
+  InvalidTokenError,
+} from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { SQLiteAuthStore } from './store.js';
 import { renderConsentPage } from './consent-page.js';
 
@@ -38,7 +42,8 @@ export class ZenApplyOAuthProvider implements OAuthServerProvider {
       },
       registerClient: (client) => {
         const clientId = crypto.randomUUID();
-        const clientSecret = client.token_endpoint_auth_method === 'none' ? undefined : crypto.randomBytes(32).toString('hex');
+        const authMethod = client.token_endpoint_auth_method || 'none';
+        const clientSecret = authMethod === 'none' ? undefined : crypto.randomBytes(32).toString('hex');
         const record = {
           client_id: clientId,
           client_secret: clientSecret,
@@ -46,7 +51,7 @@ export class ZenApplyOAuthProvider implements OAuthServerProvider {
           redirect_uris: client.redirect_uris,
           grant_types: client.grant_types || ['authorization_code', 'refresh_token'],
           response_types: client.response_types || ['code'],
-          token_endpoint_auth_method: client.token_endpoint_auth_method || 'none',
+          token_endpoint_auth_method: authMethod,
           created_at: Math.floor(Date.now() / 1000),
         };
         this.store.saveClient(record);
@@ -98,7 +103,7 @@ export class ZenApplyOAuthProvider implements OAuthServerProvider {
   ): Promise<string> {
     const record = this.store.getAuthCode(authorizationCode);
     if (!record) {
-      throw new Error('invalid_grant');
+      throw new InvalidGrantError('invalid_grant: unknown or expired code');
     }
     return record.code_challenge;
   }
@@ -112,7 +117,7 @@ export class ZenApplyOAuthProvider implements OAuthServerProvider {
   ): Promise<OAuthTokens> {
     const record = this.store.consumeAuthCode(authorizationCode);
     if (!record || record.client_id !== client.client_id) {
-      throw new Error('invalid_grant');
+      throw new InvalidGrantError('invalid_grant: invalid or expired code');
     }
 
     const familyId = crypto.randomUUID();
@@ -159,17 +164,17 @@ export class ZenApplyOAuthProvider implements OAuthServerProvider {
   ): Promise<OAuthTokens> {
     const record = this.store.getToken(refreshToken);
     if (!record || record.token_type !== 'refresh' || record.client_id !== client.client_id) {
-      throw new Error('invalid_grant');
+      throw new InvalidGrantError('invalid_grant: invalid refresh token');
     }
 
     // Reuse detection: if a rotated refresh token is used, revoke the family
     if (record.revoked) {
       this.store.revokeFamily(record.family_id);
-      throw new Error('invalid_grant');
+      throw new InvalidGrantError('invalid_grant: refresh token revoked or rotated');
     }
 
     if (record.expires_at < Date.now()) {
-      throw new Error('invalid_grant');
+      throw new InvalidGrantError('invalid_grant: refresh token expired');
     }
 
     // Rotate refresh token: revoke current, issue new
@@ -214,7 +219,7 @@ export class ZenApplyOAuthProvider implements OAuthServerProvider {
   async verifyAccessToken(token: string): Promise<AuthInfo> {
     const record = this.store.getToken(token);
     if (!record || record.token_type !== 'access' || record.revoked || record.expires_at < Date.now()) {
-      throw new Error('invalid_token');
+      throw new InvalidTokenError('invalid_token');
     }
 
     // Record stats

@@ -130,10 +130,11 @@ describe('Integration: MCP Server with OAuth & Upstream Mocks', () => {
     expect(prmRes.body.resource).toBe(`${config.PUBLIC_BASE_URL.replace(/\/$/, '')}/mcp`);
     expect(prmRes.body.authorization_servers).toContain(config.PUBLIC_BASE_URL.endsWith('/') ? config.PUBLIC_BASE_URL : `${config.PUBLIC_BASE_URL}/`);
 
-    // Also verify root /.well-known/oauth-protected-resource works
+    // Also verify root /.well-known/oauth-protected-resource returns the same /mcp document
     const rootPrmRes = await request(app).get('/.well-known/oauth-protected-resource');
     expect(rootPrmRes.status).toBe(200);
-    expect(rootPrmRes.body.resource).toBe(config.PUBLIC_BASE_URL.endsWith('/') ? config.PUBLIC_BASE_URL : `${config.PUBLIC_BASE_URL}/`);
+    expect(rootPrmRes.body.resource).toBe(`${config.PUBLIC_BASE_URL.replace(/\/$/, '')}/mcp`);
+    expect(rootPrmRes.body.bearer_methods_supported).toEqual(['header']);
 
     // 2. Authorization server metadata discovery
     const asMeta = await request(app).get('/.well-known/oauth-authorization-server');
@@ -368,5 +369,218 @@ describe('Integration: MCP Server with OAuth & Upstream Mocks', () => {
     expect(tooManyIdsRes.status).toBe(200);
     expect(tooManyIdsRes.body.result.isError).toBe(true);
     expect(tooManyIdsRes.body.result.content[0].text).toContain('<=20 items at ids');
+  });
+
+  describe('Live Conformance Probes (RFC 9728, HTTP methods, invalid tokens/grants, DCR defaults, Basic Auth)', () => {
+    it('GET, DELETE, HEAD /mcp without auth return 401 with WWW-Authenticate & resource_metadata; with valid token GET/DELETE return 405 with Allow: POST', async () => {
+      const { app, store, config } = createApp();
+
+      const expectedMetadataUrl = `${config.PUBLIC_BASE_URL.replace(/\/$/, '')}/.well-known/oauth-protected-resource/mcp`;
+
+      // 1. Without auth
+      for (const method of ['get', 'delete'] as const) {
+        const res = await request(app)[method]('/mcp');
+        expect(res.status).toBe(401);
+        expect(res.headers['www-authenticate']).toContain('Bearer');
+        expect(res.headers['www-authenticate']).toContain(`resource_metadata="${expectedMetadataUrl}"`);
+      }
+
+      const headRes = await request(app).head('/mcp');
+      expect(headRes.status).toBe(401);
+      expect(headRes.headers['www-authenticate']).toContain('Bearer');
+      expect(headRes.headers['www-authenticate']).toContain(`resource_metadata="${expectedMetadataUrl}"`);
+
+      // 2. With valid auth token
+      const validToken = 'zat_conformance_valid_token';
+      store.saveToken(validToken, {
+        client_id: 'test-client-conformance',
+        credential_name: 'test-cred',
+        token_type: 'access',
+        family_id: 'family-conformance',
+        scopes: ['read'],
+        expires_at: Date.now() + 3600000,
+        revoked: false,
+      });
+
+      for (const method of ['get', 'delete'] as const) {
+        const res = await request(app)[method]('/mcp').set('Authorization', `Bearer ${validToken}`);
+        expect(res.status).toBe(405);
+        expect(res.headers['allow']).toBe('POST');
+        expect(res.body.error).toBe('method_not_allowed');
+      }
+    });
+
+    it('POST /mcp with Authorization: Bearer garbage returns 401 invalid_token', async () => {
+      const { app } = createApp();
+
+      const res = await request(app)
+        .post('/mcp')
+        .set('Authorization', 'Bearer garbage_token')
+        .set('Accept', 'application/json, text/event-stream')
+        .send({});
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe('invalid_token');
+      expect(res.headers['www-authenticate']).toContain('error="invalid_token"');
+    });
+
+    it('POST /token grant_type=authorization_code with unknown or expired code returns 400 invalid_grant', async () => {
+      const { app, store } = createApp();
+
+      // Register a public client
+      const client = {
+        client_id: 'client-test-auth-code',
+        client_name: 'Test Client',
+        redirect_uris: ['https://claude.ai/api/mcp/auth_callback'],
+        grant_types: ['authorization_code'],
+        response_types: ['code'],
+        token_endpoint_auth_method: 'none',
+        created_at: Math.floor(Date.now() / 1000),
+      };
+      store.saveClient(client);
+
+      const res = await request(app)
+        .post('/token')
+        .set('Content-Type', 'application/x-www-form-urlencoded')
+        .send({
+          grant_type: 'authorization_code',
+          client_id: client.client_id,
+          code: 'zac_nonexistent_code',
+          code_verifier: 'some_code_verifier_123456789012345678901234567890',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('invalid_grant');
+    });
+
+    it('POST /token grant_type=refresh_token with unknown, expired, revoked or already-rotated token returns 400 invalid_grant', async () => {
+      const { app, store } = createApp();
+
+      const client = {
+        client_id: 'client-test-refresh',
+        client_name: 'Test Client Refresh',
+        redirect_uris: ['https://claude.ai/api/mcp/auth_callback'],
+        grant_types: ['refresh_token'],
+        response_types: ['code'],
+        token_endpoint_auth_method: 'none',
+        created_at: Math.floor(Date.now() / 1000),
+      };
+      store.saveClient(client);
+
+      // 1. Unknown refresh token
+      const unknownRes = await request(app)
+        .post('/token')
+        .set('Content-Type', 'application/x-www-form-urlencoded')
+        .send({
+          grant_type: 'refresh_token',
+          client_id: client.client_id,
+          refresh_token: 'zrt_unknown_token',
+        });
+      expect(unknownRes.status).toBe(400);
+      expect(unknownRes.body.error).toBe('invalid_grant');
+
+      // 2. Expired refresh token
+      const expiredToken = 'zrt_expired_token';
+      store.saveToken(expiredToken, {
+        client_id: client.client_id,
+        credential_name: 'test-cred',
+        token_type: 'refresh',
+        family_id: 'family-expired',
+        scopes: ['read'],
+        expires_at: Date.now() - 10000,
+        revoked: false,
+      });
+
+      const expiredRes = await request(app)
+        .post('/token')
+        .set('Content-Type', 'application/x-www-form-urlencoded')
+        .send({
+          grant_type: 'refresh_token',
+          client_id: client.client_id,
+          refresh_token: expiredToken,
+        });
+      expect(expiredRes.status).toBe(400);
+      expect(expiredRes.body.error).toBe('invalid_grant');
+
+      // 3. Already revoked / rotated refresh token
+      const rotatedToken = 'zrt_rotated_token';
+      store.saveToken(rotatedToken, {
+        client_id: client.client_id,
+        credential_name: 'test-cred',
+        token_type: 'refresh',
+        family_id: 'family-rotated',
+        scopes: ['read'],
+        expires_at: Date.now() + 3600000,
+        revoked: true,
+      });
+
+      const rotatedRes = await request(app)
+        .post('/token')
+        .set('Content-Type', 'application/x-www-form-urlencoded')
+        .send({
+          grant_type: 'refresh_token',
+          client_id: client.client_id,
+          refresh_token: rotatedToken,
+        });
+      expect(rotatedRes.status).toBe(400);
+      expect(rotatedRes.body.error).toBe('invalid_grant');
+    });
+
+    it('DCR without token_endpoint_auth_method defaults to none, and /token supports client_secret_basic', async () => {
+      const { app, store } = createApp();
+
+      // 1. DCR without token_endpoint_auth_method
+      const regRes = await request(app).post('/register').send({
+        client_name: 'Default Auth Method Client',
+        redirect_uris: ['https://claude.ai/api/mcp/auth_callback'],
+      });
+      expect(regRes.status).toBe(201);
+      expect(regRes.body.token_endpoint_auth_method).toBe('none');
+      expect(regRes.body.client_secret).toBeUndefined();
+
+      // 2. Test confidential client registration and client_secret_basic on /token
+      const confClient = {
+        client_id: 'confidential-client-id',
+        client_secret: 'confidential-secret-key-12345',
+        client_name: 'Confidential Client',
+        redirect_uris: ['https://claude.ai/api/mcp/auth_callback'],
+        grant_types: ['authorization_code'],
+        response_types: ['code'],
+        token_endpoint_auth_method: 'client_secret_basic',
+        created_at: Math.floor(Date.now() / 1000),
+      };
+      store.saveClient(confClient);
+
+      // Call /token using HTTP Basic Authorization header
+      const basicCreds = Buffer.from(`${confClient.client_id}:${confClient.client_secret}`).toString('base64');
+      const tokenRes = await request(app)
+        .post('/token')
+        .set('Authorization', `Basic ${basicCreds}`)
+        .set('Content-Type', 'application/x-www-form-urlencoded')
+        .send({
+          grant_type: 'authorization_code',
+          code: 'zac_nonexistent_basic_test_code',
+          code_verifier: 'verifier_string_123456789012345678901234567890',
+        });
+
+      // It must authenticate the client successfully and reject the invalid code with 400 invalid_grant (not 400 invalid_client or 400 missing client_id)
+      expect(tokenRes.status).toBe(400);
+      expect(tokenRes.body.error).toBe('invalid_grant');
+    });
+
+    it('serves bearer_methods_supported: ["header"] and exact resource URL on both root and /mcp metadata', async () => {
+      const { app, config } = createApp();
+      const expectedResource = `${config.PUBLIC_BASE_URL.replace(/\/$/, '')}/mcp`;
+
+      const mcpMeta = await request(app).get('/.well-known/oauth-protected-resource/mcp');
+      expect(mcpMeta.status).toBe(200);
+      expect(mcpMeta.body.resource).toBe(expectedResource);
+      expect(mcpMeta.body.bearer_methods_supported).toEqual(['header']);
+
+      const rootMeta = await request(app).get('/.well-known/oauth-protected-resource');
+      expect(rootMeta.status).toBe(200);
+      expect(rootMeta.body.resource).toBe(expectedResource);
+      expect(rootMeta.body.bearer_methods_supported).toEqual(['header']);
+    });
   });
 });
