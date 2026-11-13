@@ -1,0 +1,96 @@
+{
+  "jobs": [
+    {
+      "job_title": "Développeur Java/Angular",
+      "company": "alten",
+      "group_size": 1,
+      "location": "Île-de-France, France",
+      "country_code": "FR",
+      "description": "### Description de l'entreprise\n\nVoici l'offre pour un **Développeur Java/Angular**, mise en forme selon ton template :\n\n### Alten, la maison des ingénieurs : qui sommes-nous ?\n\nFort de plus de 35 ans d’expérience, le groupe Alten est présent dans plus de 30 pays. Avec ses 54 000 collaborateurs, dont 88 % d’ingénieurs, Alten s’impose aujourd’hui comme un acteur international de référence et un leader sur son marché.\n\nAttaché au bien-être de ses collaborateurs, le groupe a été certifié **Top Employer** pour la 12ᵉ année consécutive. Cette reconnaissance repose sur un audit exigeant mené par le Top Employer Institute, évaluant plus de 600 pratiques RH, garantissant un environnement de travail de qualité pour tous.\n\n### Pourquoi nous rejoindre ?\n\n- **Un engagement RSE fort** : Nos équipes contribuent à des projets porteurs de sens, tournés vers un avenir durable. Alten est notamment engagé dans plusieurs initiatives environnementales telles que _Planet Tech’Care_, la _Charte de l’ingénier",
+      "description_format_version": 1,
+      "url": "https://fr.linkedin.com/jobs/view/d%C3%A9veloppeur-java-angular-at-alten-4490714924",
+      "external_apply_url": "https://www.linkedin.com/jobs/view/4490714924",
+      "source_type": "direct",
+      "source": "linkedin",
+      "sources": [
+        "linkedin"
+      ],
+      "posted_date": "2026-11-13T13:07:31.989Z",
+      "posted_date_precision": "exact",
+      "unique_hash": "d4fbe1a199a172c8e1c8590f61123b056672de7bca9aab7d2686cea9b4a14016",
+      "companySize": null,
+      "id": "1d16fc6e-734f-41b9-923b-e8aa3c329d9b",
+      "created_at": "2026-11-13T13:09:31.999Z",
+      "employment_type": "Full-time",
+      "seniority_level": "Mid-Senior level",
+      "locations": [
+        "Île-de-France, France"
+      ],
+      "locations_truncated": false
+    },
+    {
+      "job_title": "Senior Java Automation Tester (f/m/d)",
+      "company": "hcltech germany",
+      "group_size": 1,
+      "location": "Berlin, Germany",
+      "country_code": "DE",
+      "description": "### Senior Java Automation Tester (f/m/d)\n\n**We are HCLTech**, one of the fastest-growing large tech companies in the world and home to 225,000+ people across 60 countries, supercharging progress through industry-leading capabilities centered around Digital, Engineering and Cloud. The driving force behind that work, our people, are diverse, creative, and passionate, raising the bar for excellence on a regular basis. We, in turn, work hard to bring out the best in them as we strive to help them find their spark and become the best version of themselves that they can be. If all this sounds like an environment you’ll thrive in, then you’re in the right place. Join us on our journey in advancing the technological world through innovation and creativity.\n\nWe're looking for a **Senior Java Automation Tester** to join our team and help deliver high-quality, scalable, and reliable software solutions.\n\n### Key Responsibilities\n\n- Design, develop, and maintain automated test frameworks and test ",
+      "description_format_version": 1,
+      "url": "https://de.linkedin.com/jobs/view/senior-java-automation-tester-f-m-d-at-hcltech-germany-4489567716",
+      "external_apply_url": "https://www.linkedin.com/jobs/view/4489567716",
+      "source_type": "direct",
+      "source": "linkedin",
+      "sources": [
+        "linkedin"
+      ],
+      "posted_date": "2026-11-13T13:02:31.881Z",
+      "posted_date_precision": "exact",
+      "unique_hash": "5c4b53ad839e31d5122a13385b9d06bc13dfb525ac1cfbedebf26717a81def11",
+      "companySize": null,
+      "id": "1069db3e-f167-4e27-99ab-1b8bf75f09e2",
+      "created_at": "2026-11-13T13:07:31.910Z",
+      "employment_type": "Full-time",
+      "seniority_level": "Mid-Senior level",
+      "locations": [
+        "Berlin, Germany"
+      ],
+      "locations_truncated": false
+    },
+    {
+      "job_title": "Full-Stack Engineer (Frontend Leaning) - ElevenAI",
+      "company": "elevenlabs",
+      "group_size": 5,
+      "location": "Denmark",
+      "country_code": "DK",
+      "description": "### About ElevenLabs\n\nElevenLabs is an AI research and product company transforming how we interact with technology.\n\nWe launched in January 2023 with the first human-like AI voice model. Today, we serve millions of users and thousands of businesses - from fast-growing startups to large enterprises like Deutsche Telekom and Meta. Our investors are some of the world's most prominent, including Andreessen Horowitz, ICONIQ Growth and Sequoia. We've raised $781M in funding and our last valuation was $22B - multiples of 11, always.\n\n### We Have Expanded From Voice Into Three Main Platforms\n\n- ElevenAgents enables businesses to deliver seamless and intelligent customer experiences, with the integrations, testing, monitoring, and reliability necessary to deploy voice and chat agents at scale.\n- ElevenCreative empowers creators and marketers to generate and edit speech, music, image, and video across 70+ languages.\n- ElevenAPI gives developers access to our leading AI audio foundational models",
+      "description_format_version": 1,
+      "url": "https://dk.linkedin.com/jobs/view/full-stack-engineer-frontend-leaning-elevenai-at-elevenlabs-4490712860",
+      "external_apply_url": "https://www.linkedin.com/jobs/view/4490712860",
+      "source_type": "direct",
+      "source": "linkedin",
+      "sources": [
+        "linkedin"
+      ],
+      "posted_date": "2026-11-13T12:59:01.675Z",
+      "posted_date_precision": "exact",
+      "unique_hash": "b362885d0708c0edfab03023c66fd7642c8803bf6c0831b5cda2cc581b1b76ec",
+      "resolved_work_model": "remote",
+      "companySize": null,
+      "id": "23929df6-e9dc-4f1a-90de-27ab461c2f6e",
+      "created_at": "2026-11-13T13:07:01.692Z",
+      "employment_type": "Full-time",
+      "seniority_level": "Not Applicable",
+      "locations": [
+        "Denmark",
+        "Dublin, County Dublin, Ireland",
+        "Hungary",
+        "Poland",
+        "United Kingdom"
+      ],
+      "locations_truncated": false
+    }
+  ],
+  "not_found": [
+    "00000000-0000-0000-0000-000000000000"
+  ]
+}

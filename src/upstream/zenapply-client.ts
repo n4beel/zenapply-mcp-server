@@ -48,8 +48,8 @@ export class ZenApplyClient {
           throw new ToolError('Upstream authentication failed.');
         }
 
-        const data = (await res.json()) as { access_token?: string; token?: string; expiresIn?: number };
-        const token = data.access_token || data.token;
+        const data = (await res.json()) as { accessToken?: string; access_token?: string; token?: string; expiresIn?: number };
+        const token = data.accessToken || data.access_token || data.token;
         if (!token) {
           throw new ToolError('Invalid login response from upstream: missing token.');
         }

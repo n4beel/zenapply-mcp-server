@@ -107,7 +107,7 @@ describe('Integration: MCP Server with OAuth & Upstream Mocks', () => {
   });
 
   it('serves RFC 8414 & RFC 9728 metadata endpoints and handles 401 with WWW-Authenticate', async () => {
-    const { app } = createApp();
+    const { app, config } = createApp();
 
     // 1. Unauthenticated request to /mcp gets 401 with WWW-Authenticate header
     const unauthRes = await request(app).post('/mcp').send({});
@@ -118,10 +118,11 @@ describe('Integration: MCP Server with OAuth & Upstream Mocks', () => {
     // 2. Authorization server metadata discovery
     const asMeta = await request(app).get('/.well-known/oauth-authorization-server');
     expect(asMeta.status).toBe(200);
-    expect(asMeta.body.issuer.replace(/\/$/, '')).toBe('http://localhost:8080');
-    expect(asMeta.body.authorization_endpoint).toBe('http://localhost:8080/authorize');
-    expect(asMeta.body.token_endpoint).toBe('http://localhost:8080/token');
-    expect(asMeta.body.registration_endpoint).toBe('http://localhost:8080/register');
+    const expectedBase = config.PUBLIC_BASE_URL.replace(/\/$/, '');
+    expect(asMeta.body.issuer.replace(/\/$/, '')).toBe(expectedBase);
+    expect(asMeta.body.authorization_endpoint).toBe(`${expectedBase}/authorize`);
+    expect(asMeta.body.token_endpoint).toBe(`${expectedBase}/token`);
+    expect(asMeta.body.registration_endpoint).toBe(`${expectedBase}/register`);
   });
 
   it('completes the full DCR + Consent + PKCE flow to call MCP tools', async () => {

@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import Database from 'better-sqlite3';
 
 export interface OAuthClientRecord {
@@ -45,6 +47,12 @@ export class SQLiteAuthStore {
   private db: Database.Database;
 
   constructor(dbPath: string, private readonly pepper: string) {
+    if (dbPath !== ':memory:') {
+      const dir = path.dirname(dbPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    }
     this.db = new Database(dbPath);
     this.init();
   }
@@ -143,7 +151,7 @@ export class SQLiteAuthStore {
     const codeHash = this.hashSecret(rawCode);
     const expiresAt = Date.now() + ttlMs;
     const stmt = this.db.prepare(`
-      INSERT INTO enrollment_codes (code_hash, name, expires_at, used)
+      INSERT OR REPLACE INTO enrollment_codes (code_hash, name, expires_at, used)
       VALUES (?, ?, ?, 0)
     `);
     stmt.run(codeHash, name, expiresAt);
@@ -170,7 +178,7 @@ export class SQLiteAuthStore {
   saveAuthCode(code: string, record: Omit<AuthCodeRecord, 'code_hash' | 'used'>): void {
     const codeHash = this.hashSecret(code);
     const stmt = this.db.prepare(`
-      INSERT INTO auth_codes (code_hash, client_id, credential_name, redirect_uri, code_challenge, scopes, expires_at, used)
+      INSERT OR REPLACE INTO auth_codes (code_hash, client_id, credential_name, redirect_uri, code_challenge, scopes, expires_at, used)
       VALUES (?, ?, ?, ?, ?, ?, ?, 0)
     `);
     stmt.run(
