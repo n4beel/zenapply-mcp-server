@@ -112,8 +112,28 @@ describe('Integration: MCP Server with OAuth & Upstream Mocks', () => {
     // 1. Unauthenticated request to /mcp gets 401 with WWW-Authenticate header
     const unauthRes = await request(app).post('/mcp').send({});
     expect(unauthRes.status).toBe(401);
-    expect(unauthRes.headers['www-authenticate']).toContain('Bearer');
-    expect(unauthRes.headers['www-authenticate']).toContain('resource_metadata=');
+    const wwwAuth = unauthRes.headers['www-authenticate'];
+    expect(wwwAuth).toContain('Bearer');
+    expect(wwwAuth).toContain('resource_metadata=');
+
+    // Extract resource_metadata URL from WWW-Authenticate header
+    const match = wwwAuth.match(/resource_metadata="([^"]+)"/);
+    expect(match).not.toBeNull();
+    const resourceMetadataUrl = match![1];
+    const expectedResourceMetadataUrl = `${config.PUBLIC_BASE_URL.replace(/\/$/, '')}/.well-known/oauth-protected-resource/mcp`;
+    expect(resourceMetadataUrl).toBe(expectedResourceMetadataUrl);
+
+    // Follow the resource_metadata URL (path: /.well-known/oauth-protected-resource/mcp)
+    const resourcePath = new URL(resourceMetadataUrl).pathname;
+    const prmRes = await request(app).get(resourcePath);
+    expect(prmRes.status).toBe(200);
+    expect(prmRes.body.resource).toBe(`${config.PUBLIC_BASE_URL.replace(/\/$/, '')}/mcp`);
+    expect(prmRes.body.authorization_servers).toContain(config.PUBLIC_BASE_URL.endsWith('/') ? config.PUBLIC_BASE_URL : `${config.PUBLIC_BASE_URL}/`);
+
+    // Also verify root /.well-known/oauth-protected-resource works
+    const rootPrmRes = await request(app).get('/.well-known/oauth-protected-resource');
+    expect(rootPrmRes.status).toBe(200);
+    expect(rootPrmRes.body.resource).toBe(config.PUBLIC_BASE_URL.endsWith('/') ? config.PUBLIC_BASE_URL : `${config.PUBLIC_BASE_URL}/`);
 
     // 2. Authorization server metadata discovery
     const asMeta = await request(app).get('/.well-known/oauth-authorization-server');
