@@ -57,6 +57,49 @@ export function createApp() {
     }
   });
 
+  // Support HTTP Basic Authentication for confidential client tokens (/token)
+  app.use((req: Request, _res: Response, next) => {
+    if (req.headers.authorization && req.headers.authorization.startsWith('Basic ')) {
+      const b64 = req.headers.authorization.slice(6).trim();
+      const decoded = Buffer.from(b64, 'base64').toString('utf8');
+      const colonIdx = decoded.indexOf(':');
+      if (colonIdx !== -1) {
+        const clientId = decodeURIComponent(decoded.slice(0, colonIdx));
+        const clientSecret = decodeURIComponent(decoded.slice(colonIdx + 1));
+        req.body = req.body || {};
+        if (!req.body.client_id) req.body.client_id = clientId;
+        if (!req.body.client_secret) req.body.client_secret = clientSecret;
+      }
+    }
+    next();
+  });
+
+  // Default token_endpoint_auth_method to 'none' on DCR when omitted
+  app.post('/register', (req: Request, _res: Response, next) => {
+    if (req.body && !req.body.token_endpoint_auth_method) {
+      req.body.token_endpoint_auth_method = 'none';
+    }
+    next();
+  });
+
+  // Serve RFC 9728 Protected Resource Metadata at both /mcp and root
+  const protectedResourceMetadata = {
+    resource: `${config.PUBLIC_BASE_URL.replace(/\/$/, '')}/mcp`,
+    authorization_servers: [
+      config.PUBLIC_BASE_URL.endsWith('/') ? config.PUBLIC_BASE_URL : `${config.PUBLIC_BASE_URL}/`,
+    ],
+    scopes_supported: ['read'],
+    bearer_methods_supported: ['header'],
+  };
+
+  app.get(
+    ['/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/mcp'],
+    (_req: Request, res: Response) => {
+      res.setHeader('Cache-Control', 'no-store');
+      res.status(200).json(protectedResourceMetadata);
+    },
+  );
+
   // Mount OAuth router
   const issuerUrl = new URL(config.PUBLIC_BASE_URL);
   const mcpUrl = new URL('/mcp', config.PUBLIC_BASE_URL);
@@ -70,15 +113,6 @@ export function createApp() {
   };
 
   app.use(mcpAuthRouter(oauthRouterOptions));
-
-  // Also support root /.well-known/oauth-protected-resource per RFC 9728
-  app.use(
-    mcpAuthMetadataRouter({
-      oauthMetadata: createOAuthMetadata(oauthRouterOptions),
-      resourceServerUrl: issuerUrl,
-      scopesSupported: ['read'],
-    }),
-  );
 
   // Consent submission endpoint (from consent page form)
   app.post('/authorize/consent', (req: Request, res: Response) => {
@@ -137,33 +171,40 @@ export function createApp() {
   // In stateless mode, each incoming request connects via a new transport instance
   const resourceMetadataUrl = getOAuthProtectedResourceMetadataUrl(mcpUrl);
 
-  app.post(
-    '/mcp',
-    requireBearerAuth({
-      verifier: oauthProvider,
-      resourceMetadataUrl,
-    }),
-    async (req: Request, res: Response) => {
-      try {
-        const mcpServer = createMcpServer({
-          client: zenapplyClient,
-          cursorSecret: config.CURSOR_HMAC_SECRET,
-          store,
-        });
-        const transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: undefined,
-          enableJsonResponse: true,
-        });
-        await mcpServer.connect(transport);
-        await transport.handleRequest(req, res, req.body);
-      } catch (err) {
-        logger.error({ err }, 'Error handling MCP POST request');
-        if (!res.headersSent) {
-          res.status(500).json({ error: 'Internal server error' });
-        }
+  const mcpAuth = requireBearerAuth({
+    verifier: oauthProvider,
+    resourceMetadataUrl,
+  });
+
+  // Authenticate all methods on /mcp
+  app.use('/mcp', mcpAuth);
+
+  app.post('/mcp', async (req: Request, res: Response) => {
+    try {
+      const mcpServer = createMcpServer({
+        client: zenapplyClient,
+        cursorSecret: config.CURSOR_HMAC_SECRET,
+        store,
+      });
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+        enableJsonResponse: true,
+      });
+      await mcpServer.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+    } catch (err) {
+      logger.error({ err }, 'Error handling MCP POST request');
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Internal server error' });
       }
-    },
-  );
+    }
+  });
+
+  // Non-POST requests with valid token return 405 Method Not Allowed with Allow: POST
+  app.all('/mcp', (_req: Request, res: Response) => {
+    res.setHeader('Allow', 'POST');
+    res.status(405).json({ error: 'method_not_allowed', error_description: 'Only POST is supported for /mcp' });
+  });
 
   return { app, store, zenapplyClient, config };
 }
