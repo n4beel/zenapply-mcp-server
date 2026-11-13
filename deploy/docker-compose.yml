@@ -1,0 +1,37 @@
+services:
+  mcp:
+    image: ${IMAGE_NAME:-ghcr.io/n4beel/zenapply-mcp-server}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    env_file:
+      - /home/nabeel/zenapply-mcp-env/.env
+    networks:
+      - zenapply-mcp-net
+    volumes:
+      - mcp-state:/data
+    tmpfs:
+      - /tmp
+    read_only: true
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 384M
+          pids: 128
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  zenapply-mcp-net:
+    driver: bridge
+
+volumes:
+  mcp-state:
+    name: zenapply-mcp-state

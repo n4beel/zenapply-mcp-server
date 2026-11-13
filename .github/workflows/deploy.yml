@@ -1,0 +1,134 @@
+name: Deploy to Production VM
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git SHA or image tag to deploy (leave blank for latest commit)'
+        required: false
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    name: Build & Push Container Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine Image Tag
+        id: meta
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${{ github.sha }}"
+          fi
+          echo "image_tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push container image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.image_tag }}
+            ${{ env.IMAGE_NAME }}:latest
+
+  deploy:
+    name: Deploy to Production VM
+    needs: build
+    runs-on: [self-hosted, mcp]
+    permissions:
+      packages: read
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Pull and Deploy with Docker Compose
+        env:
+          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🚀 Deploying ZenApply MCP Server version: $IMAGE_TAG"
+
+          # Job-scoped docker config directory to prevent host config contamination
+          DOCKER_CFG_DIR="$(mktemp -d)"
+          export DOCKER_CONFIG="$DOCKER_CFG_DIR"
+
+          # Authenticate using job GITHUB_TOKEN
+          echo "$GITHUB_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+          # Pull target image for zenapply-mcp project only
+          IMAGE_TAG="$IMAGE_TAG" docker compose -p zenapply-mcp -f deploy/docker-compose.yml pull
+
+          # Clean up temporary docker config
+          rm -rf "$DOCKER_CFG_DIR"
+
+          # Start container
+          IMAGE_TAG="$IMAGE_TAG" docker compose -p zenapply-mcp -f deploy/docker-compose.yml up -d --remove-orphans
+
+      - name: Poll Healthcheck
+        run: |
+          echo "⏳ Waiting for container to be healthy..."
+          READY=0
+          for i in {1..30}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/health/ready || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Healthcheck passed on attempt $i."
+              READY=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$READY" -ne 1 ]; then
+            echo "❌ /health/ready failed to respond with 200 within 60s."
+            exit 1
+          fi
+
+      - name: Run Live Post-Deploy Smoke Test
+        run: |
+          echo "🧪 Running live smoke tests..."
+          npm ci
+          npx tsx test/smoke/run.ts
+
+      - name: Record Last Good Tag
+        if: success()
+        run: |
+          mkdir -p /home/nabeel/zenapply-mcp-env
+          echo "${{ needs.build.outputs.image_tag }}" > /home/nabeel/zenapply-mcp-env/last-good-tag
+          echo "✅ Recorded last good tag: ${{ needs.build.outputs.image_tag }}"
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "⚠️ Deployment or smoke test failed! Initiating rollback..."
+          if [ -f /home/nabeel/zenapply-mcp-env/last-good-tag ]; then
+            LAST_TAG=$(cat /home/nabeel/zenapply-mcp-env/last-good-tag)
+            echo "🔄 Rolling back to last good tag: $LAST_TAG"
+            IMAGE_TAG="$LAST_TAG" docker compose -p zenapply-mcp -f deploy/docker-compose.yml up -d
+          else
+            echo "⚠️ No last-good-tag found to roll back to."
+          fi
+          exit 1
